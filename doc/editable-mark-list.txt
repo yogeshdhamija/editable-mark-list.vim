@@ -1,0 +1,124 @@
+*editable-mark-list.txt*  The mark list as an editable buffer
+
+Author: Yogesh Dhamija <yogeshdhamija@outlook.com>
+
+                                                                   *:MarkList*
+:MarkList		Show the marks in the current window as a plain, editable
+			buffer. Edits take effect immediately -- there is
+			nothing to save -- and the list updates itself as marks
+			change elsewhere.
+
+The list shows the local marks of the buffer it replaced, then the global
+ones, then the special ones, with hints above it: >
+
+  see :h :MarkList | Updates Live!
+  <CR> to jump | delete line to :delmarks | u to undo
+  ──────────────────────────────────────────────────────────────────────────
+  Local (a-z)
+   a     12  let g:loaded = 1
+   t     40  function! s:Tidy(lines) abort
+
+  Global (A-Z)
+   V  ~/.vimrc:37  nnoremap `  <Cmd>call AccessMarks()<CR>
+
+  Special
+   "     12  position when last exiting buffer
+   .     44  position of last change
+<
+Local and special marks show their line number, global and numbered ones
+their file too. Then the text of that line, when its buffer is loaded, or
+what a special mark is. The hints and section titles are not part of the
+buffer. They need Neovim or Vim 9.0.0451+.
+
+' and ` (the position before the latest jump) are left out: they belong to a
+window, not a buffer.
+
+==============================================================================
+USAGE
+
+<CR>		Jump to the mark under the cursor, as |`| would from the
+		buffer the list replaced. CTRL-O comes back to the list.
+		For a local mark, CTRL-^ afterwards goes where it would
+		have before the list.
+
+`{mark}  '{mark}
+		Jump to {mark}, as shown in the list: a local mark is
+		the buffer's the list replaced, not the list's own.
+		`` and '' go back to where you were in that buffer.
+
+Deleting lines	Any way of deleting lines -- `dd`, `5dd`, `Vd`, `:g/foo/d` --
+		deletes those marks. ^ and . can't be: their lines come
+		back, with a message. They can't be set again, so
+		deleting them couldn't be undone.
+
+Adding lines	Putting a deleted line back (`p` after `dd`), or typing a
+		mark on a line of its own, puts back a mark deleted from
+		a list, where it was. Any other new line is swept away.
+
+                                                     *editable-mark-list-undo*
+u  CTRL-R	Undo or redo your last change to the list; takes a count.
+		Marks come back exactly where they were, column too. A
+		mark set again since stays where it is now. History is
+		shared by all lists and survives leaving the list. Vim's
+		other undo commands (`U`, `g-`, |:undo|, ...) do nothing
+		here.
+
+Only the mark at the start of a line matters. Mangle the rest and the line is
+just redrawn.
+
+==============================================================================
+` WITH THE LIST ON SHOW                              *editableMarkList#Pick()*
+
+editableMarkList#Pick()
+	|`|, with the list shown in the current window while Vim waits for
+	the mark. Map ` to it: >
+		nnoremap ` <Cmd>call editableMarkList#Pick()<CR>
+<	Then, after `:
+	    {mark}	the built-in `{mark} runs: the jumplist, the
+			alternate file, errors and macros are exactly as
+			without the mapping
+	    <Esc>	the list stays, in Normal mode: `<Esc>gg, `<Esc>yy
+	    CTRL-C	back where you were, nothing changed
+	    other keys	the list stays, and the key runs in it: `<CR>
+			jumps to the first mark, `/foo searches the list,
+			and a click lands in it
+
+	Showing the list and taking it away again leaves no trace: no
+	autocommands fire, and the jumplist, alternate file, view and |'quote|
+	mark are as they were.
+
+	Nothing is drawn when the mark is already typed ahead (`a typed
+	quickly, or from a mapping or |:normal|) or a register is executing.
+
+	Macros: recording `a stores `a, and replaying it jumps to a. A
+	macro that recorded `<Esc> stays in the list when replayed, as it did
+	when recorded.
+
+	Visual and Operator-pending mode (v`a, d`a) are untouched, since the
+	mapping is for Normal mode only. So are windows that can't show the
+	list: the command-line window, 'winfixbuf' and 'diff' windows, and
+	popups. There ` works as before, and <Esc> cancels.
+
+==============================================================================
+OPTIONS
+
+                                                  *g:editable_mark_list_hints*
+g:editable_mark_list_hints		(default: 1)
+	Set to 0 to hide the hints. The section titles stay.
+
+==============================================================================
+HIGHLIGHTS
+
+                                               *editable-mark-list-highlights*
+	Group			Used for			Default link ~
+	markListHint		the hints			Comment
+	markListHintKey		keys and commands in the hints	Special
+	markListHeader		section titles			Title
+	markListMark		the mark at the start of a line	Identifier
+	markListLnum		line numbers			Number
+	markListFile		a global mark's file and line	Directory
+	markListDescription	what a special mark is		Comment
+
+In Vim (not Neovim), a hint line has the one color, markListHint.
+
+ vim:tw=78:ts=8:noet:ft=help:norl:

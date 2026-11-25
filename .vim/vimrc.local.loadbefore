@@ -1,0 +1,11 @@
+" Use this checkout of editable-mark-list.vim instead of the copy vim-plug installs from
+"   GitHub, when Vim/Neovim is started in this directory (this file is
+"   only found relative to the cwd, so getcwd() is this checkout).
+if !exists("disabled_plugins")
+    let disabled_plugins = []
+endif
+let disabled_plugins = disabled_plugins + ["yogeshdhamija/editable-mark-list.vim"]
+if !exists("added_plugins")
+    let added_plugins = []
+endif
+let added_plugins = added_plugins + [[getcwd(), {}]]
