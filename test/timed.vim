@@ -153,4 +153,78 @@ call Step('call Ok(match(getbufline(g:list, 1, "$"), "^ c     10") >= 0, "a mark
 call Step('call Ok(match(getbufline(g:list, 1, "$"), "^ a      6  a5") >= 0, "and moves with its line") | call feedkeys(":delmarks c\<CR>", "t")')
 call Step('call Is(match(getbufline(g:list, 1, "$"), "^ c "), -1, ":delmarks takes it away") | only')
 
+" Mouse tests. 'mouse' is off in Vim, with -u.
+call Step('set mouse=a')
+
+" A double-click at screen row a:row, column a:col: down, up, down, up. Taken
+" as typed, so mappings apply to it as to a real one.
+function! DoubleClick(row, col) abort
+    if(has('nvim'))
+        for l:i in range(2)
+            call nvim_input_mouse('left', 'press', '', 0, a:row - 1, a:col - 1)
+            call nvim_input_mouse('left', 'release', '', 0, a:row - 1, a:col - 1)
+        endfor
+    else
+        call test_setmouse(a:row, a:col)
+        call feedkeys("\<LeftMouse>\<LeftRelease>\<2-LeftMouse>\<2-LeftRelease>", 't')
+    endif
+endfunction
+
+" The first screen row that starts with a:text, or 0: found by reading the
+" screen, rather than worked out the way the plugin does.
+function! ScreenRow(text) abort
+    for l:row in range(1, &lines)
+        if(join(map(range(1, strchars(a:text)), 'screenstring(l:row, v:val)'), '') ==# a:text)
+            return l:row
+        endif
+    endfor
+    return 0
+endfunction
+
+" The screen row of mark a:mark's line in the list
+function! MarkRow(mark) abort
+    return ScreenRow(getline(LineOf(a:mark)))
+endfunction
+
+" Setup()'s a.txt and its marks, mark Q in b.txt, and the list of them, alone
+" on the screen with a status line, scrolled to the top.
+function! MouseSetup() abort
+    call Setup()
+    call setpos("'Q", [bufnr('b.txt'), 12, 1, 0])
+    set laststatus=2
+    MarkList
+    normal! gg
+    redraw
+endfunction
+
+call Step("call Describe('a double-click on a mark jumps to it')")
+call Step('call MouseSetup() | call DoubleClick(MarkRow("b"), 3)')
+call Step('call Is([bufname("%"), line("."), mode()], ["a.txt", 8, "n"], "a local mark")')
+call Step('call MouseSetup() | call DoubleClick(MarkRow("Q"), 3)')
+call Step('call Is([bufname("%"), line(".")], ["b.txt", 12], "a global mark, in another file")')
+
+call Step("call Describe('a double-click anywhere else jumps nowhere')")
+if(g:hints_supported)
+    " Every row above the first mark: the hints and the first section title
+    call Step('call MouseSetup() | let g:row = 1 | let g:first = MarkRow("a") | call Ok(g:first > 2, "the hints and a title are above the first mark")')
+    for s:i in range(6)
+        call Step('if g:row < g:first | call DoubleClick(g:row, 3) | endif')
+        call Step('if g:row < g:first | call Is([&filetype, line(".")], ["marklist", 1], "on row " . g:row . " above the first mark") | call feedkeys("\<Esc>", "nt") | let g:row += 1 | endif')
+    endfor
+    call Step('call Is(g:row, g:first, "that is every row above it")')
+    call Step('call MouseSetup() | let g:title = ScreenRow("Global") | call Ok(g:title > MarkRow("b"), "the Global title is below the local marks") | call DoubleClick(g:title, 3)')
+    call Step('call Is(&filetype, "marklist", "on a section title in the middle") | call feedkeys("\<Esc>", "nt")')
+    call Step('call DoubleClick(g:title - 1, 3)')
+    call Step('call Is(&filetype, "marklist", "on the blank row above it") | call feedkeys("\<Esc>", "nt")')
+endif
+call Step('call MouseSetup() | call DoubleClick(ScreenRow(getline("$")) + 2, 3)')
+call Step('call Is(&filetype, "marklist", "past the last mark") | call Is(mode(), "v", "which starts Visual mode, as a double-click there does") | call feedkeys("\<Esc>", "nt")')
+call Step('call DoubleClick(winheight(0) + 1, 3)')
+call Step('call Is(&filetype, "marklist", "on the status line") | call feedkeys("\<Esc>", "nt")')
+
+call Step("call Describe('a double-click while ` waits jumps to the mark')")
+call Step('call Setup() | set laststatus=2 | call setpos("''Q", [bufnr("b.txt"), 12, 1, 0]) | call feedkeys("`", "t")')
+call Step('call Is(&filetype, "marklist", "the list shows") | call DoubleClick(MarkRow("Q"), 3)')
+call Step('call Is([bufname("%"), line(".")], ["b.txt", 12], "the click ends the wait, and the double-click jumps")')
+
 call timer_start(g:delay, 'RunSteps')

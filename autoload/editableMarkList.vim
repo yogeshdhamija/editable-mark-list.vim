@@ -320,6 +320,33 @@ function! s:JumpTo(mark, key) abort
     call feedkeys(a:key . a:mark, 'in')
 endfunction
 
+" Whether the last mouse click was on a mark's line, rather than the hints
+" or a section title above one (which getmousepos() reports as that line),
+" the ~ rows past the end (as the last line), or the status line.
+function! s:ClickedOnText() abort
+    let l:m = getmousepos()
+    if(l:m.winid != win_getid() || l:m.line < 1)
+        return 0
+    endif
+    " Vim's screenpos() puts a line with text above it at the first row of
+    " that text, one row per property, and has no row for its other columns
+    " when 'nowrap' is set.
+    if(!has('nvim') && s:hints_supported)
+        let l:above = len(filter(prop_list(l:m.line),
+                    \ {_, p -> get(p, 'text_align', '') ==# 'above'}))
+        if(l:above)
+            return screenpos(l:m.winid, l:m.line, 1).row + l:above == l:m.screenrow
+        endif
+    endif
+    return screenpos(l:m.winid, l:m.line, max([1, l:m.column])).row == l:m.screenrow
+endfunction
+
+" For the double-click mapping: jump to the mark clicked on, or else do what
+" a double-click usually does.
+function! editableMarkList#DoubleClick() abort
+    return s:ClickedOnText() ? "\<Cmd>call editableMarkList#JumpUnderCursor()\<CR>" : "\<2-LeftMouse>"
+endfunction
+
 function! editableMarkList#JumpUnderCursor() abort
     let l:c = s:ParseMark(getline('.'))
     if(empty(l:c))
@@ -967,6 +994,7 @@ function! s:Setup() abort
         autocmd BufWinEnter <buffer> call s:WindowOptions()
     augroup END
     nnoremap <buffer> <CR> <Cmd>call editableMarkList#JumpUnderCursor()<CR>
+    nnoremap <buffer> <expr> <2-LeftMouse> editableMarkList#DoubleClick()
     " ` and ' jump to the marks the list shows: its origin's, not its own.
     nnoremap <buffer> ` <Cmd>call editableMarkList#Pick('`')<CR>
     nnoremap <buffer> ' <Cmd>call editableMarkList#Pick("'")<CR>

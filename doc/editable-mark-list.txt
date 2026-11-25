@@ -41,6 +41,10 @@ USAGE
 		For a local mark, CTRL-^ afterwards goes where it would
 		have before the list.
 
+Double-click	Jump to the mark double-clicked, as <CR> does. Anywhere
+		else, the hints and section titles included, a
+		double-click does what it usually does.
+
 `{mark}  '{mark}
 		Jump to {mark}, as shown in the list: a local mark is
 		the buffer's the list replaced, not the list's own.
@@ -81,7 +85,8 @@ editableMarkList#Pick()
 	    CTRL-C	back where you were, nothing changed
 	    other keys	the list stays, and the key runs in it: `<CR>
 			jumps to the first mark, `/foo searches the list,
-			and a click lands in it
+			and a click lands in it: a double-click on a
+			mark jumps to it
 
 	Showing the list and taking it away again leaves no trace: no
 	autocommands fire, and the jumplist, alternate file, view and |'quote|
